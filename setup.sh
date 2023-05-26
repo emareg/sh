@@ -42,9 +42,9 @@ _install_shell(){
     # copy config
     echo -n "Overwrite config files (zshrc)? (y) "; read yn </dev/tty
     if [ "$yn" != "${yn#[Yy]}" ]; then
-        curl http://sh.emareg.de/dotfiles/.zshrc > ~/.zshrc
+        curl https://raw.githubusercontent.com/emareg/sh/main/dotfiles/.zshrc > ~/.zshrc
         mkdir -p .config/my
-        curl http://sh.emareg.de/dotfiles/.config/my/myalias > ~/.config/my/myalias
+        curl https://raw.githubusercontent.com/emareg/sh/main/dotfiles/.config/my/myalias > ~/.config/my/myalias
     fi
 }
 
