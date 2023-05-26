@@ -2,5 +2,5 @@
 
 run like so:
 ```
-curl http://sh.emareg.de/setup.sh | sh
+curl http://sh.emareg.de/setup.sh | bash
 ```
