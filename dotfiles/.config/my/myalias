@@ -1,0 +1,48 @@
+# source this file with bash/zsh/fish when interactive shell
+# e.g. add "[ -f ~/.config/my/myalias ] && source ~/.config/my/myalias"
+
+# generic alias
+alias ..='cd ..'; alias ...='cd ../..'; alias ....='cd ../../..'
+alias cd..='cd ..'
+
+
+# Searching
+# ----------------------------
+alias ff='find . | grep -i'    # find file
+alias fif='find . -size -3M | grep --exclude-dir={.git,.svn} -IinHr'   # find in file, -I ignores jpg/pdf
+alias fit='grep --include=\*.{txt,md,tex,rtf,bib} -IinHr'       # find in text
+
+
+alias lsports='netstat -tulanp'
+alias serve='python3 -m http.server'
+
+
+# colorize defaults
+alias grep='grep --color=auto'
+alias ip='ip --color=auto'
+alias diff='diff --color=auto'
+
+## ls
+alias sl='ls'
+alias ls='ls -BCF --color=always --group-directories-first'
+alias la='ls -a'
+alias ll='ls -lFah --time-style=iso'
+
+#command -v lsd >/dev/null 2>&1 && alias ls='lsd'
+command -v exa >/dev/null 2>&1 && alias ls='exa -BF --icons --group-directories-first'
+alias llt="exa -1 --icons --tree --git-ignore"
+
+## git
+alias gcpp='git commit -a; git pull origin; git push origin'
+
+## cat
+command -v batcat >/dev/null 2>&1 && alias cat='batcat'
+
+
+# top
+command -v htop >/dev/null 2>&1 && alias top='htop'
+command -v btop >/dev/null 2>&1 && alias top='btop'
+
+# lazy
+command -v lazygit >/dev/null 2>&1 && alias lg='lazygit'
+command -v lazydocker >/dev/null 2>&1 && alias ld='lazydocker'
