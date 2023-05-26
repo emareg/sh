@@ -2,7 +2,7 @@
 
 PKG_BASE="git wget curl unzip python3"
 PKG_ZSH="zsh zsh-syntax-highlighting zsh-autosuggestions tmux" 
-PKG_BETTER="exa bat btop fzf grc"
+PKG_BETTER="exa bat btop fzf grc zoxide"
 
 PKG_DEV="make vim gcc"
 PKG_PIP="matplotlib"
@@ -31,10 +31,6 @@ _install_shell(){
     [ -x /bin/zsh ] && echo "Set ZSH shell:" && chsh -s $(which zsh)
     echo -n "Install starship? (y) "; read yn </dev/tty
     if [ "$yn" != "${yn#[Yy]}" ]; then  curl -sS https://starship.rs/install.sh | sh; fi
-
-    PT_URL="https://raw.githubusercontent.com/emareg/Promptheus/master/install.sh"
-    echo -n "Install Promptheus? (y) "; read yn </dev/tty
-    if [ "$yn" != "${yn#[Yy]}" ]; then wget -O - ${PT_URL} | sh; fi
 
     # install further packages
     _install_pkgs "improved" "${PKG_BETTER}"
