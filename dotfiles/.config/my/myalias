@@ -29,8 +29,8 @@ alias la='ls -a'
 alias ll='ls -lFah --time-style=iso'
 
 #command -v lsd >/dev/null 2>&1 && alias ls='lsd'
-command -v exa >/dev/null 2>&1 && alias ls='exa -BF --icons --group-directories-first'
-alias llt="exa -1 --icons --tree --git-ignore"
+command -v eza >/dev/null 2>&1 && alias ls='eza -BF --icons --group-directories-first'
+alias llt="eza -1 --icons --tree --git-ignore"
 
 ## git
 alias gcpp='git commit -a; git pull origin; git push origin'

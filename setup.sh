@@ -2,7 +2,7 @@
 
 PKG_BASE="git wget curl unzip python3"
 PKG_ZSH="zsh zsh-syntax-highlighting zsh-autosuggestions tmux" 
-PKG_BETTER="exa bat btop fzf grc zoxide"
+PKG_BETTER="eza bat btop fzf grc zoxide"
 
 PKG_DEV="make vim gcc"
 PKG_PIP="matplotlib"

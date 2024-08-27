@@ -148,27 +148,30 @@ submenu_net(){
 	cmd_arp="arp -n"
 	cmd_nm_config="cat /etc/NetworkManager/NetworkManager.conf"
 	cmd_if_config="cat /etc/network/interfaces"
+	cmd_ports=$(sel_cmd "sudo ss -tunlp" "sudo netstat -tnlp")
 
 
 	subchoice=1
 	while true; do
-		echo -e "\n${WHITE}   Main => Network:${white}"
-		echo "   1> ${cmd_iface}                                    (interfaces)"
-		echo "   2> ${cmd_routes}                            (Show routing)"
-		echo "   3> ${cmd_dns}                            (Show DNS)"
-		echo "   5> ${cmd_arp}                                        (Show MACs)"
-		echo "   5> ${cmd_nm_config}     (NM Config)"
-		echo "   6> ${cmd_if_config}                     (interfaces)"
-		echo "   * back"
+		echo -e "\n${WHITE}  Main => Network:${white}"
+		printf '  %-40s %-20s\n' "1> ${cmd_iface}" "(Show interfaces)"
+		printf '  %-40s %-20s\n' "2> ${cmd_routes}" "(Show routes)"
+		printf '  %-40s %-20s\n' "3> ${cmd_dns}" "(Show DNS)"
+		printf '  %-40s %-20s\n' "4> ${cmd_arp}" "(Show MACs)"
+		printf '  %-40s %-20s\n' "5> ${cmd_nm_config}" "(NM Config)"
+		printf '  %-40s %-20s\n' "5> ${cmd_if_config}" "(interfaces)"
+		printf '  %-40s %-20s\n' "5> ${cmd_ports}" "(show ports)"
+		echo "  * back"
 
 		echo -n "Your Choice: "; read subchoice </dev/tty
 		case $subchoice in
 			1 ) run_cmd "$cmd_iface";; 
 			2 ) run_cmd "$cmd_routes";; 
 			3 ) run_cmd "$cmd_dns";; 
-			4 ) run_cmd "$cmd_dns";; 
+			4 ) run_cmd "$cmd_arp";; 
 			5 ) run_cmd "$cmd_nm_config";; 
 			6 ) run_cmd "$cmd_if_config";; 
+			7 ) run_cmd "$cmd_ports";; 
 			* ) break;;
 		esac
 	done

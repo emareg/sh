@@ -46,10 +46,10 @@ bindkey -s '^p' 'history | fzf\n'
 # -------------------------------------
 
 # starship prompt. Installed via pkg manager
-eval "$(starship init zsh)"
+command -v starship >/dev/null 2>&1 && { eval "$(starship init zsh)" }
 
 # zoxide autojump with "j". Installed via pkg manager
-eval "$(zoxide init --cmd j zsh)"
+command -v zoxide >/dev/null 2>&1 && { eval "$(zoxide init --cmd j zsh)" }
 
 # Load Plugins (installed via "sudo apt install zsh-autosuggestions")
 source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
