@@ -28,7 +28,7 @@ _install_pkgs(){
 _install_shell(){
     # prompt
     _install_pkgs "zsh" "${PKG_ZSH}"
-    [ -x /bin/zsh ] && echo "Set ZSH shell:" && chsh -s $(which zsh)
+    [ -x /bin/zsh ] && echo "Set ZSH shell:" && sudo chsh -s $(which zsh)
     echo -n "Install starship? (y) "; read yn </dev/tty
     if [ "$yn" != "${yn#[Yy]}" ]; then  curl -sS https://starship.rs/install.sh | sh; fi
 
