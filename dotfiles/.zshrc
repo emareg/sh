@@ -22,11 +22,9 @@ setopt inc_append_history
 setopt share_history # share command history data
 
 
-
-
 # End of lines configured by zsh-newuser-install
 # The following lines were added by compinstall
-zstyle :compinstall filename '/home/emu/.zshrc'
+zstyle :compinstall filename '$HOME/.zshrc'
 
 autoload -Uz compinit promptinit colors
 compinit
