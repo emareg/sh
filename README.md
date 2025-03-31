@@ -10,4 +10,4 @@ curl -sS sh.emareg.de/sysinfo.sh | bash -s [sys|cpu|net|mem]
 
 If you only have wget, run `wget -qO - sh.emareg.de/sysinfo.sh | bash`
 
-GitHub: https://github.com/emareg/sh
+GitHub: [https://github.com/emareg/sh](https://github.com/emareg/sh)
