@@ -14,7 +14,7 @@ alias fit='grep --include=\*.{txt,md,tex,rtf,bib} -IinHr'       # find in text
 
 
 alias lsports='netstat -tulanp'
-alias serve='python3 -m http.server'
+alias serve='python3 -m http.server -b 127.0.0.1'
 
 
 # colorize defaults
