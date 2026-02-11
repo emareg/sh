@@ -14,7 +14,14 @@ alias fit='grep --include=\*.{txt,md,tex,rtf,bib} -IinHr'       # find in text
 
 
 alias lsports='netstat -tulanp'
-alias serve='python3 -m http.server -b 127.0.0.1'
+alias serve='python3 -m http.server -b 127.0.0.1 8001'
+
+
+## generate
+alias genpw='tr -dc A-Za-z0-9 </dev/urandom | head -c 32 ; echo ""'
+alias genhex='tr -dc a-f0-9 </dev/urandom | head -c 32 ; echo ""'
+alias genuuid='\cat /proc/sys/kernel/random/uuid'
+
 
 
 # colorize defaults
