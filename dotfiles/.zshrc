@@ -1,10 +1,17 @@
-export PATH="$PATH:$HOME/.rvm/bin:$HOME/.local/bin" # Add RVM to PATH for scripting
+
+# manage PATH
+typeset -U path PATH   # avoid duplicates
+path+=(~/.local/bin)
+path+=(~/.cargo/bin)   # Rust
+export PATH
+
+# other ENV variables
 export LESS='-R --use-color -Dd+r$Du+b' # color less
 
-# basic options
+# basic ZSH options
 setopt autocd autopushd
 setopt extendedglob
-bindkey -v   # vim keys
+# bindkey -v   # vim keys
 
 
 # History
@@ -35,8 +42,8 @@ colors
 # bindkey -s '^o' 'cd "$(find * -type d | fzf)"\n'
 bindkey -s '^q' 'exit\n'
 bindkey -s '^w' 'exit\n'
-bindkey -s '^o' 'ji\n'
-bindkey -s '^p' 'history | fzf\n'
+bindkey -s '^o' ji
+# bindkey '^p' fzf-history-widget
 
 
 
@@ -54,7 +61,7 @@ source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 # Load FZF keybindings. Created during fzf installation
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+command -v fzf --zsh >/dev/null 2>&1 && { eval "$(fzf --zsh)" }
 
 # load my alias. Installed via dotfiles repo
 [ -f ~/.config/my/myalias ] && source ~/.config/my/myalias
