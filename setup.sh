@@ -50,13 +50,6 @@ _install_shell(){
 
     # install further packages
     _install_pkgs "improved" "${PKG_BETTER}"
-
-    # copy config
-    if _confirm "Overwrite config files (zshrc)?"; then
-        curl https://raw.githubusercontent.com/emareg/sh/main/dotfiles/.zshrc > ~/.zshrc
-        mkdir -p ~/.config/my
-        curl https://raw.githubusercontent.com/emareg/sh/main/dotfiles/.config/my/myalias > ~/.config/my/myalias
-    fi
 }
 
 _install_shell_scripts(){
@@ -125,26 +118,27 @@ _install_docker(){
 
 
 # main menu
-echo "Will help to install/configure packages. Please choose. You will be asked again for confirmation."
-echo ""
-echo "   1.  Install Shell (zsh, starship)"
-echo "   2.  Install Own Shell Scripts Symlinks (ipscan, sysinfo)"
-echo "   3.  Install Dotfiles (clone to \$HOME with separate git-dir)"
-echo "   4.  Install Basics (git, python)"
-echo "   5.  Install Development (make, vim, gcc)"
-echo "   6.  Install Docker + lazydocker"
-echo "   *   Quit"
-echo ""
+while true; do
+    echo ""
+    echo "Will help to install/configure packages. Please choose. You will be asked again for confirmation."
+    echo ""
+    echo "   1.  Install Shell (zsh, starship)"
+    echo "   2.  Install Own Shell Scripts Symlinks (ipscan, sysinfo)"
+    echo "   3.  Install Dotfiles (clone to \$HOME with separate git-dir)"
+    echo "   4.  Install Basics (git, python)"
+    echo "   5.  Install Development (make, vim, gcc)"
+    echo "   6.  Install Docker + lazydocker"
+    echo "   *   Quit"
+    echo ""
 
-
-# read -p "Your Choice: " mainchoice;
-echo -n "Your Choice: "; read mainchoice </dev/tty
-case "$mainchoice" in
-    "1" ) _install_shell;;
-    "2" ) _install_shell_scripts;;
-    "3" ) _install_dotfiles;;
-    "4" ) _install_basic;;
-    "5" ) _install_dev;;
-    "6" ) _install_docker;;
-    *) exit 0;;
-esac
+    echo -n "Your Choice: "; read mainchoice </dev/tty
+    case "$mainchoice" in
+        "1" ) _install_shell;;
+        "2" ) _install_shell_scripts;;
+        "3" ) _install_dotfiles;;
+        "4" ) _install_basic;;
+        "5" ) _install_dev;;
+        "6" ) _install_docker;;
+        *) exit 0;;
+    esac
+done
