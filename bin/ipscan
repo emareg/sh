@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+theip=$(ip route get 1 | sed -n 's/^.*src \([0-9.]*\) .*$/\1/p')
+ipbase="${theip%.*}."
+echo "Scanning ${ipbase}X"
+#echo $(seq 254) | xargs -P255 -I% -d" " ping -W 2 -c 1 ${ipbase}% | grep -E "[0-1].*?:"
+for i in {1..254}; do (sleep 0.02; ping $ipbase$i -c 1 -W 2 | grep -E "[0-1].*?:" &) ;done; sleep 1

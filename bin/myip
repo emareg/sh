@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+NET_GATEWAY="$(/sbin/ip route | awk '/default/ { print $3;exit }')"
+NET_IFACE="$(/sbin/ip route | awk '/default/ { print $5;exit }')"
+NET_IP_LAN="$(/sbin/ip -o route get to 8.8.8.8 | sed -n 's/.*src \([0-9.]\+\).*/\1/p')"
+NET_IP_WAN="$(dig +short whoami.akamai.net @ns1-1.akamaitech.net)"
+
+echo "LAN IP: ${NET_IP_LAN} (${NET_IFACE}) via GW ${NET_GATEWAY}"
+echo "WAN IP: ${NET_IP_WAN}"

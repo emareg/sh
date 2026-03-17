@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+
+# TODO: check whether I am sourced or called? If called, offer menu, if sourced, create alias
+
+# todo: create executables called 2pdf  that check if it is tex,svg, and so on
+# todo: check several commands, if none available, print the list
+
+# List of converters
+# 2elf  (convert from bin,exe to elf using GNU Toolchain)
+# 2pdf  from pdf/svg/tex/html/txt  (=> pandoc rocks)
+# 2jpg/png/tif   (convert rocks)
+
+# invocation based on extension:
+# x2y in.tex out.md
+
+# invokation 
+# 2pdf in.tex
+# 2pdf in.tex out.pdf
+# 2pdf in/
+# 2pdf 
+
+
+
+
+
+
+
+# converters for one file
+x2y_conv_webp2png(){ dwebp "$1" -o "$2"; }
+x2y_conv_pdf2svg(){ inkscape --without-gui --file="$1" --export-plain-svg="$2"; }
+x2y_conv_svg2pdf(){ inkscape --without-gui --file="$1" --export-pdf="$2"; }
+x2y_conv_png2jpg(){ convert "$1" "$2"; }
+x2y_conv_jpg2png(){ convert "$1" "$2"; }
+x2y_conv_jpg2jpg(){ convert "$1" -resize "2160x2160^>" -quality 90 "$1" "$2"; }
+x2y_conv_png2png(){ convert "$1" -resize "1440x1440^>" "$1" "$2"; }
+x2y_conv_pdf2png(){ convert -density 300 "$1" -resize "1440x1440^>" "$2"; } # -quality 100
+
+# improvers
+x2y_conv_html2html(){ tidy --word-2000 true "$1" -o "$2"; }
+x2y_conv_py2py(){ black "$1"; }
+
+
+
+# the case checker
+x2y_find_converter(){
+	inext="${1##*.}"
+	outext="${2##*.}"
+	case "${inext}2${outext}" in
+		"jpg2jpg") x2y_conv_jpg2jpg $@;;
+		"png2png") x2y_conv_png2png $@;;
+		"png2jpg") x2y_conv_png2jpg $@;;
+		"jpg2png") x2y_conv_jpg2png $@;;
+		"pdf2svg") x2y_conv_pdf2svg $@;;
+		"svg2pdf") x2y_conv_svg2pdf $@;;
+		*) echo "Do not know a conversion from $inext to ${outext}."
+	esac
+}
+
+# file reader
+x2y(){
+	from=$1; to=${1##*2}; 
+    echo "from=$1; to=${1##*2}"
+	in=()
+	out=""
+	outdir=""
+	for arg in "${@:3}"
+	do
+		#echo "len in is ${#in[@]}"
+		#echo "ext is ${arg##*.}"
+		if [ -d "$arg" ]; then  # dictionary
+			if [ ${#in[@]} -eq 0 ]; then
+				[[ "${arg}" != */ ]] && arg="${arg}/"
+				in=("$arg"*)
+			else
+				outdir="$arg"
+				[[ "${outdir}" != */ ]] && outdir="${outdir}/"
+			fi
+		elif [ -f "$arg" ] && [ "${arg##*.}" == "$from" ]; then 
+    		in+=("$arg")
+    	elif [ "${arg##*.}" == "$to" ] && [ ! -e "$arg" ] && [ ${#in[@]} -eq 1 ]; then
+    		out="$arg"
+    		#echo "added out"
+    		break # no further inputs if output found
+    	else
+    		echo "Wrong usage! Do not know how to handle $arg."
+    		return -1
+    	fi
+	done
+	# only one file
+	if [ -n "$out" ]; then
+		echo "Converting one file ${in[0]} to $out ..."
+		x2y_find_converter "${in[0]}" "$out"
+		return
+	fi
+	for file in "${in[@]}"
+	do
+		out="${outdir}${file/.${from}/.${to}}"
+		echo "Converting $file to $out ..."
+	done
+}
+
+
+# final aliases
+pdf2svg(){ x2y "pdf" "svg" $@; }
+svg2pdf(){ x2y "svg" "pdf" $@; }
+png2jpg(){ x2y "jpg" "png" $@; }
+jpg2png(){ x2y "jpg" "png" $@; }
+
+
+x2y $@
+
+# pdf2pdf  # will invoke compressPDF
