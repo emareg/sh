@@ -1,8 +1,30 @@
 #!/usr/bin/env sh
-NET_GATEWAY="$(/sbin/ip route | awk '/default/ { print $3;exit }')"
-NET_IFACE="$(/sbin/ip route | awk '/default/ { print $5;exit }')"
-NET_IP_LAN="$(/sbin/ip -o route get to 8.8.8.8 | sed -n 's/.*src \([0-9.]\+\).*/\1/p')"
-NET_IP_WAN="$(dig +short whoami.akamai.net @ns1-1.akamaitech.net)"
+# Simple script to print LAN/WAN IP info, used as "myip" in the shell prompt.
 
-echo "LAN IP: ${NET_IP_LAN} (${NET_IFACE}) via GW ${NET_GATEWAY}"
+# LAN info (ip preferred, fallback to route/ifconfig)
+if command -v ip >/dev/null 2>&1; then
+    NET_GATEWAY="$(ip route 2>/dev/null | awk '/default/ { print $3; exit }')"
+    NET_IFACE="$(ip route 2>/dev/null | awk '/default/ { print $5; exit }')"
+    NET_IP_LAN="$(ip -o route get to 8.8.8.8 2>/dev/null | sed -n 's/.*src \([0-9.]*\).*/\1/p')"
+elif command -v route >/dev/null 2>&1; then
+    NET_GATEWAY="$(route -n get default 2>/dev/null | awk '/gateway/ { print $2 }')"
+    NET_IFACE="$(route -n get default 2>/dev/null | awk '/interface/ { print $2 }')"
+    NET_IP_LAN="$(ifconfig "$NET_IFACE" 2>/dev/null | awk '/inet / { print $2; exit }')"
+fi
+
+# WAN IP (try tools in order of preference, each with 1s timeout)
+if command -v dig >/dev/null 2>&1; then
+    NET_IP_WAN="$(dig +short +time=1 +tries=1 whoami.akamai.net @ns1-1.akamaitech.net 2>/dev/null)"
+fi
+if [ -z "$NET_IP_WAN" ] && command -v curl >/dev/null 2>&1; then
+    NET_IP_WAN="$(curl -sf --max-time 1 https://api4.my-ip.io/ip 2>/dev/null)"
+fi
+if [ -z "$NET_IP_WAN" ] && command -v wget >/dev/null 2>&1; then
+    NET_IP_WAN="$(wget -qO- --timeout=1 https://api4.my-ip.io/ip 2>/dev/null)"
+fi
+if [ -z "$NET_IP_WAN" ]; then
+    NET_IP_WAN="unavailable"
+fi
+
+echo "LAN IP: ${NET_IP_LAN:-unavailable} (${NET_IFACE:-?}) via GW ${NET_GATEWAY:-?}"
 echo "WAN IP: ${NET_IP_WAN}"
