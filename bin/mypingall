@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# mypingall - quickly scan the local network and list responding hosts
+# Usage: mypingall [IP/MASK]  e.g. mypingall 192.168.1.0/23
+
+_ip_to_int() {
+    local a b c d; IFS=. read -r a b c d <<< "$1"
+    echo $(( (a << 24) | (b << 16) | (c << 8) | d ))
+}
+
+_int_to_ip() {
+    local n="$1"
+    echo "$(( (n >> 24) & 255 )).$(( (n >> 16) & 255 )).$(( (n >> 8) & 255 )).$(( n & 255 ))"
+}
+
+# Determine IP and mask
+LOCAL_IP=$(ip route get 1 2>/dev/null | sed -n 's/.*src \([0-9.]*\).*/\1/p')
+if [ -z "$LOCAL_IP" ]; then
+    echo "Error: could not determine local IP." >&2; exit 1
+fi
+
+if [ -n "$1" ]; then
+    INPUT_IP="${1%%/*}"
+    MASK="${1##*/}"
+else
+    INPUT_IP="$LOCAL_IP"
+    MASK=24
+fi
+
+# Validate mask
+if ! [ "$MASK" -eq "$MASK" ] 2>/dev/null || [ "$MASK" -lt 1 ] || [ "$MASK" -gt 32 ]; then
+    echo "Error: invalid mask /${MASK}." >&2; exit 1
+fi
+if [ "$MASK" -lt 20 ]; then
+    echo "Error: mask /${MASK} is too broad (minimum /20, max $(( 1 << (32 - MASK) )) addresses)." >&2; exit 1
+fi
+
+# Confirm for large scans
+if [ "$MASK" -lt 24 ]; then
+    total=$(( 1 << (32 - MASK) ))
+    echo -n "Warning: /${MASK} will scan up to ${total} addresses. Continue? (y) "; read yn </dev/tty
+    [ "$yn" != "${yn#[Yy]}" ] || exit 0
+fi
+
+# Calculate host range from CIDR
+ip_int=$(_ip_to_int "$INPUT_IP")
+mask_int=$(( 0xFFFFFFFF << (32 - MASK) & 0xFFFFFFFF ))
+net_start=$(( ip_int & mask_int ))
+net_size=$(( 1 << (32 - MASK) ))
+host_start=$(( net_start + 1 ))
+host_end=$(( net_start + net_size - 2 ))
+host_count=$(( net_size - 2 ))
+net_addr=$(_int_to_ip "$net_start")
+
+echo "Scanning ${net_addr}/${MASK} (${host_count} hosts) ... (this host: ${LOCAL_IP})"
+printf "%-18s %-10s %-22s %s\n" "IP" "LATENCY" "MAC" "HOSTNAME"
+printf "%-18s %-10s %-22s %s\n" "------------------" "----------" "---------------------" "--------"
+
+# Generate IP list
+_gen_ips() {
+    local i="$1" end="$2"
+    while [ "$i" -le "$end" ]; do
+        _int_to_ip "$i"; i=$(( i + 1 ))
+    done
+}
+
+_gen_ips "$host_start" "$host_end" \
+    | xargs -P256 -I{} sh -c \
+        'lat=$(ping -c3 -W1 -q {} 2>/dev/null | awk -F"/" "/rtt/{print \$5}"); [ -n "$lat" ] && echo "{} ${lat}ms"' \
+    | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
+    | while read -r ip latency; do
+        # MAC from arp or ip neigh
+        mac=""
+        if command -v arp >/dev/null 2>&1; then
+            mac=$(arp -n "$ip" 2>/dev/null | awk '/[0-9a-f]:[0-9a-f]/{print $3}' | head -1)
+        fi
+        if [ -z "$mac" ] && command -v ip >/dev/null 2>&1; then
+            mac=$(ip neigh show "$ip" 2>/dev/null | awk '{print $5}' | head -1)
+        fi
+        [ -z "$mac" ] && mac="-"
+
+        # hostname via avahi-resolve, dig, or nmap
+        host=""
+        if command -v avahi-resolve >/dev/null 2>&1; then
+            host=$(avahi-resolve -a "$ip" 2>/dev/null | awk '{print $2}')
+        fi
+        if [ -z "$host" ] && command -v dig >/dev/null 2>&1; then
+            host=$(dig +short +time=1 +tries=1 -x "$ip" 2>/dev/null | sed 's/\.$//')
+        fi
+        if [ -z "$host" ] && command -v nmap >/dev/null 2>&1; then
+            host=$(nmap -sn --host-timeout 1s "$ip" 2>/dev/null | awk '/Nmap scan report/{print $NF}' | tr -d '()')
+        fi
+        [ -z "$host" ] && host="-"
+
+        printf "%-18s %-10s %-22s %s\n" "$ip" "$latency" "$mac" "$host"
+    done
