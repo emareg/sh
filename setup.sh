@@ -62,12 +62,12 @@ _install_shell_scripts(){
         mkdir -p "$(dirname "$REPO_DIR")"
         git clone https://github.com/emareg/sh "$REPO_DIR"
     fi
-    mkdir -p "$HOME/.local/bin/myscripts"
+    mkdir -p "$HOME/.local/bin"
     for script in "$REPO_DIR/bin/"*; do
-        ln -sf "$script" "$HOME/.local/bin/myscripts/$(basename "$script")"
+        ln -sf "$script" "$HOME/.local/bin/$(basename "$script")"
         echo "Linked: $(basename "$script")"
     done
-    echo "Done. Make sure ~/.local/bin/myscripts is in your PATH."
+    echo "Done. Make sure ~/.local/bin is in your PATH."
 }
 
 _install_dotfiles(){

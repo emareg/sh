@@ -1,0 +1,213 @@
+#!/usr/bin/env bash
+# decode-jwt — Decode and display a JWT or SD-JWT with color coding
+#
+# Usage:  decode-jwt.sh <token>
+#         echo <token> | decode-jwt.sh
+#         decode-jwt.sh < token.txt
+#
+# Color coding:
+#   Red    = Header       Green  = Payload      Blue   = Signature
+#   Orange = Disclosures  Purple = Key Binding JWT  (SD-JWT only)
+
+# ── Colors ────────────────────────────────────────────────────────────────────
+
+if [ -t 1 ]; then
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    BLUE='\033[0;34m'
+    PURPLE='\033[0;35m'
+    BOLD='\033[1m'
+    RESET='\033[0m'
+    # Orange: 256-color if supported, bold-yellow fallback
+    num_colors=$(tput colors 2>/dev/null || echo 0)
+    if (( num_colors >= 256 )); then
+        ORANGE='\033[38;5;208m'
+    else
+        ORANGE='\033[1;33m'
+    fi
+else
+    RED='' GREEN='' BLUE='' PURPLE='' BOLD='' RESET='' ORANGE=''
+fi
+
+# ── Helper: base64url → raw bytes ─────────────────────────────────────────────
+
+decode_base64url() {
+    local input="$1"
+    local mod=$(( ${#input} % 4 ))
+    local padded="$input"
+    if   (( mod == 2 )); then padded="${input}=="
+    elif (( mod == 3 )); then padded="${input}="
+    fi
+    printf '%s' "$padded" | tr -- '-_' '+/' | base64 --decode 2>/dev/null
+}
+
+# ── Helper: pretty-print JSON (python3 → jq → raw) ───────────────────────────
+
+pretty_json() {
+    local json="$1"
+    if command -v python3 &>/dev/null; then
+        printf '%s' "$json" | python3 -c \
+            'import sys,json; print(json.dumps(json.load(sys.stdin), indent=2, ensure_ascii=False))' \
+            2>/dev/null && return
+    fi
+    if command -v jq &>/dev/null; then
+        printf '%s' "$json" | jq . 2>/dev/null && return
+    fi
+    printf '%s\n' "$json"
+}
+
+# ── Helper: extract alg from JWT header ──────────────────────────────────────
+
+get_alg() {
+    local header_b64="${1%%.*}"
+    local header_json
+    header_json="$(decode_base64url "$header_b64")"
+    if command -v python3 &>/dev/null; then
+        printf '%s' "$header_json" | \
+            python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("alg","unknown"))' \
+            2>/dev/null
+    elif command -v jq &>/dev/null; then
+        printf '%s' "$header_json" | jq -r '.alg // "unknown"' 2>/dev/null
+    else
+        printf '%s' "$header_json" | grep -o '"alg":"[^"]*"' | head -1 | cut -d'"' -f4
+    fi
+}
+
+# ── Helper: print a colored section label ────────────────────────────────────
+
+section_label() {
+    local color="$1" label="$2"
+    printf "\n${color}${BOLD}── %s ──${RESET}\n" "$label"
+}
+
+# ── Helper: decode and print all three parts of a JWT ────────────────────────
+# Args: <jwt> <header_color> <payload_color> <sig_color>
+
+decode_jwt_parts() {
+    local jwt="$1"
+    local hdr_color="$2" pay_color="$3" sig_color="$4"
+
+    local hdr_b64 pay_b64 sig_b64
+    IFS='.' read -r hdr_b64 pay_b64 sig_b64 <<< "$jwt"
+
+    local hdr_json pay_json alg
+    hdr_json="$(decode_base64url "$hdr_b64")"
+    pay_json="$(decode_base64url "$pay_b64")"
+    alg="$(get_alg "$jwt")"
+
+    section_label "$hdr_color" "Header"
+    pretty_json "$hdr_json"
+
+    section_label "$pay_color" "Payload"
+    pretty_json "$pay_json"
+
+    section_label "$sig_color" "Signature  (alg: ${alg})"
+    printf '%s\n' "$sig_b64"
+}
+
+# ── Read input ────────────────────────────────────────────────────────────────
+
+if [[ $# -ge 1 ]]; then
+    TOKEN="$1"
+elif [[ ! -t 0 ]]; then
+    TOKEN="$(cat)"
+else
+    printf 'Usage: %s <jwt>\n       echo <jwt> | %s\n' "$0" "$0" >&2
+    exit 1
+fi
+
+# Strip surrounding whitespace / newlines
+TOKEN="${TOKEN//[$'\t\r\n ']}"
+
+# ── Validate ──────────────────────────────────────────────────────────────────
+
+first_segment="${TOKEN%%~*}"
+dot_count="${first_segment//[^.]}"
+if [[ ${#dot_count} -ne 2 ]]; then
+    printf 'Error: Input does not appear to be a valid JWT.\n' >&2
+    exit 1
+fi
+
+# ── Detect SD-JWT (contains ~ separator) ─────────────────────────────────────
+
+if [[ "$TOKEN" == *"~"* ]]; then
+    IS_SD_JWT=true
+else
+    IS_SD_JWT=false
+fi
+
+# ── Parse SD-JWT segments ─────────────────────────────────────────────────────
+
+if [[ "$IS_SD_JWT" == true ]]; then
+    IFS='~' read -ra all_segments <<< "$TOKEN"
+    issuer_jwt="${all_segments[0]}"
+    disclosures=()
+    kb_jwt=""
+    for (( i=1; i<${#all_segments[@]}; i++ )); do
+        seg="${all_segments[$i]}"
+        [[ -z "$seg" ]] && continue
+        # A KB-JWT looks like a JWT: it contains exactly two dots
+        seg_dots="${seg//[^.]}"
+        if [[ ${#seg_dots} -eq 2 ]]; then
+            kb_jwt="$seg"
+        else
+            disclosures+=("$seg")
+        fi
+    done
+fi
+
+# ── Print raw token, color-coded ─────────────────────────────────────────────
+
+printf '\n'
+
+if [[ "$IS_SD_JWT" == false ]]; then
+    IFS='.' read -r hdr_b64 pay_b64 sig_b64 <<< "$TOKEN"
+    printf "${RED}%s${RESET}.${GREEN}%s${RESET}.${BLUE}%s${RESET}\n" \
+        "$hdr_b64" "$pay_b64" "$sig_b64"
+else
+    # Issuer-signed JWT portion
+    IFS='.' read -r hdr_b64 pay_b64 sig_b64 <<< "$issuer_jwt"
+    printf "${RED}%s${RESET}.${GREEN}%s${RESET}.${BLUE}%s${RESET}" \
+        "$hdr_b64" "$pay_b64" "$sig_b64"
+
+    # Disclosures
+    for d in "${disclosures[@]}"; do
+        printf "~${ORANGE}%s${RESET}" "$d"
+    done
+
+    # Key Binding JWT or trailing ~
+    if [[ -n "$kb_jwt" ]]; then
+        IFS='.' read -r kb_hdr_b64 kb_pay_b64 kb_sig_b64 <<< "$kb_jwt"
+        printf "~${PURPLE}%s${RESET}.${PURPLE}%s${RESET}.${PURPLE}%s${RESET}" \
+            "$kb_hdr_b64" "$kb_pay_b64" "$kb_sig_b64"
+    else
+        printf "~"
+    fi
+    printf '\n'
+fi
+
+# ── Print decoded sections ────────────────────────────────────────────────────
+
+if [[ "$IS_SD_JWT" == false ]]; then
+    decode_jwt_parts "$TOKEN" "$RED" "$GREEN" "$BLUE"
+else
+    # Issuer-signed JWT
+    decode_jwt_parts "$issuer_jwt" "$RED" "$GREEN" "$BLUE"
+
+    # Disclosures
+    disc_num=1
+    for d in "${disclosures[@]}"; do
+        disc_json="$(decode_base64url "$d")"
+        section_label "$ORANGE" "Disclosure ${disc_num}"
+        pretty_json "$disc_json"
+        (( disc_num++ )) || true
+    done
+
+    # Key Binding JWT
+    if [[ -n "$kb_jwt" ]]; then
+        section_label "$PURPLE" "Key Binding JWT"
+        decode_jwt_parts "$kb_jwt" "$PURPLE" "$PURPLE" "$PURPLE"
+    fi
+fi
+
+printf '\n'
