@@ -5,10 +5,6 @@
 
 
 
-# https://lzone.de/cheat-sheet/Linux-Networking
-
-
-
 # Prompt Colors
 #white='\033[0;37m';  WHITE='\033[1;37m'
 white='\033[0m';  WHITE='\033[1;37m'
@@ -20,8 +16,6 @@ purple='\033[0;35m'; PURPLE='\033[1;35m'
 yellow='\033[0;33m'; YELLOW='\033[1;33m'
 gray='\033[0;30m';   GRAY='\033[1;30m'
 nocol='\033[0m';
-
-
 
 
 # extracts the next word after paramter separated by space, : =
@@ -40,14 +34,14 @@ parse_keyline(){
 
 
 # selects availables command
+# selects first available command from any number of arguments
 sel_cmd(){
-	if command -v ${1%% *} >/dev/null; then 
-		echo "$1"
-	elif command -v ${2%% *} >/dev/null; then
-		echo "$2"
-	elif command -v ${3%% *} >/dev/null; then
-		echo "$3"
-	fi
+	for cmd in "$@"; do
+		if command -v ${cmd%% *} >/dev/null 2>&1; then
+			echo "$cmd"
+			return
+		fi
+	done
 }
 
 
@@ -159,8 +153,8 @@ submenu_net(){
 		printf '  %-40s %-20s\n' "3> ${cmd_dns}" "(Show DNS)"
 		printf '  %-40s %-20s\n' "4> ${cmd_arp}" "(Show MACs)"
 		printf '  %-40s %-20s\n' "5> ${cmd_nm_config}" "(NM Config)"
-		printf '  %-40s %-20s\n' "5> ${cmd_if_config}" "(interfaces)"
-		printf '  %-40s %-20s\n' "5> ${cmd_ports}" "(show ports)"
+		printf '  %-40s %-20s\n' "6> ${cmd_if_config}" "(interfaces)"
+		printf '  %-40s %-20s\n' "7> ${cmd_ports}" "(show ports)"
 		echo "  * back"
 
 		echo -n "Your Choice: "; read subchoice </dev/tty
@@ -185,9 +179,9 @@ submenu_net(){
 
 
 # Gather CPU Info
-CPU_CORES="$(cat /proc/cpuinfo | grep processor | wc -l)"
-CPU_NAME=$(cat /proc/cpuinfo | grep -m 1 -oP 'model name\s+: \K(.*)')        # lscpu
-CPU_ARCH=$(cat /proc/cpuinfo | grep -m 1 -oP 'model name\s+: \K(.*)')
+CPU_CORES="$(grep -c processor /proc/cpuinfo)"
+CPU_NAME=$(grep -m 1 -oP 'model name\s+: \K(.*)' /proc/cpuinfo)
+CPU_ARCH=$(uname -m)
 # get CPU word width
 case $(uname -m) in
 	x86_64)CPU_BITS=64;;
@@ -196,9 +190,9 @@ case $(uname -m) in
 esac
 
 
-NET_GATEWAY="$(/sbin/ip route | awk '/default/ { print $3;exit }')"
-NET_IFACE="$(/sbin/ip route | awk '/default/ { print $5;exit }')"
-NET_IP_LAN="$(/sbin/ip -o route get to 8.8.8.8 | sed -n 's/.*src \([0-9.]\+\).*/\1/p')"
+NET_GATEWAY="$(ip route 2>/dev/null | awk '/default/ { print $3;exit }')"
+NET_IFACE="$(ip route 2>/dev/null | awk '/default/ { print $5;exit }')"
+NET_IP_LAN="$(ip -o route get to 8.8.8.8 2>/dev/null | sed -n 's/.*src \([0-9.]*\).*/\1/p')"
 
 
 print_summary(){
@@ -245,7 +239,11 @@ print_netinfo(){
 	echo -e "${WHITE}## Network ##${white}"
 	echo "Host:   $(hostname)"
 	echo "LAN IP: $(ip -o route get to 8.8.8.8 | sed -n 's/.*src \([0-9.]\+\).*/\1/p')"
-	echo "WAN IP: $(wget -qO- ipinfo.io/ip)"
+	wan_ip=""
+	command -v dig  >/dev/null 2>&1 && wan_ip=$(dig +short +time=1 +tries=1 whoami.akamai.net @ns1-1.akamaitech.net 2>/dev/null)
+	[ -z "$wan_ip" ] && command -v curl >/dev/null 2>&1 && wan_ip=$(curl -sf --max-time 1 https://api4.my-ip.io/ip 2>/dev/null)
+	[ -z "$wan_ip" ] && command -v wget >/dev/null 2>&1 && wan_ip=$(wget -qO- --timeout=1 https://api4.my-ip.io/ip 2>/dev/null)
+	echo "WAN IP: ${wan_ip:-unavailable}"
 	echo "DNS:    $(cat /etc/resolv.conf | parse_key nameserver)"
 
 
@@ -271,7 +269,7 @@ print_meminfo(){
 	echo ""
 	echo -e "${WHITE}## Memory ##${white}"
 	#echo "RAM: $(lsmem | parse_key 'Total online memory')"
-	echo "RAM:   $(( $(sed -n "s/MemTotal:[\t ]\+\([0-9]\+\) kB/\1/p" /proc/meminfo)/1000000)) GB ($(( $(sed -n "s/MemFree:[\t ]\+\([0-9]\+\) kB/\1/p" /proc/meminfo)/1000000)) GB free)"
+	echo "RAM:   $(free -h 2>/dev/null | awk '/^Mem:/{print $2 " total, " $7 " available"}' || echo "$(( $(sed -n 's/MemTotal:[ \t]*\([0-9]*\) kB/\1/p' /proc/meminfo) / 1024 )) MiB total, $(( $(sed -n 's/MemAvailable:[ \t]*\([0-9]*\) kB/\1/p' /proc/meminfo) / 1024 )) MiB available")"
 	echo "Mount: $(df -H --output=size / 2> /dev/null | awk ' NR==2 ') /,  $(df -H --output=size /home 2> /dev/null | awk ' NR==2 ') /home"
 
 	#echo "commands: free, top, vmstat, cat /proc/meminfo" 
@@ -301,7 +299,7 @@ print_meminfo(){
 
 echo_release(){
 	if [ -f /etc/os-release ]; then # freedesktop.org and systemd
-	    source /etc/os-release
+	    . /etc/os-release
 		echo -n "${NAME} ${VERSION}"
 	elif type lsb_release >/dev/null 2>&1; then # linuxbase.org
 	    echo -n "$(lsb_release -sd)"
@@ -316,11 +314,18 @@ echo_release(){
 
 
 installed_packages(){
-	echo apt --installed | wc -l
-	echo yum list installed  | wc -l
+	if command -v dpkg >/dev/null 2>&1; then
+		dpkg -l | grep -c '^ii'
+	elif command -v rpm >/dev/null 2>&1; then
+		rpm -qa | wc -l
+	elif command -v pacman >/dev/null 2>&1; then
+		pacman -Q | wc -l
+	elif command -v apk >/dev/null 2>&1; then
+		apk info | wc -l
+	else
+		echo "unknown"
+	fi
 }
-
-
 
 
 # ======================================================
@@ -333,9 +338,5 @@ case "$1" in
 	"mem") print_meminfo;;
 	*) print_summary; main_menu;;
 esac
-
-
-
-
 
 
