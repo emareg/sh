@@ -73,7 +73,8 @@ _install_shell_scripts(){
 _install_dotfiles(){
     local GIT_DIR="$HOME/.git-dotfiles"
     local GIT_USER
-    GIT_USER=$(git config --get github.user 2>/dev/null || git config --get user.name 2>/dev/null)
+    GIT_USER=$(git config --get github.user 2>/dev/null)
+    [ -z "$GIT_USER" ] && command -v gh &>/dev/null && GIT_USER=$(gh api user --jq .login 2>/dev/null)
     if [ -z "$GIT_USER" ]; then
         echo -n "GitHub username: "; read GIT_USER </dev/tty
     fi
