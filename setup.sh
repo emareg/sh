@@ -62,12 +62,12 @@ _install_shell_scripts(){
         mkdir -p "$(dirname "$REPO_DIR")"
         git clone https://github.com/emareg/sh "$REPO_DIR"
     fi
-    mkdir -p "$HOME/.local/bin"
+    mkdir -p "$HOME/.local/bin/myscripts"
     for script in "$REPO_DIR/bin/"*; do
-        ln -sf "$script" "$HOME/.local/bin/$(basename "$script")"
+        ln -sf "$script" "$HOME/.local/bin/myscripts/$(basename "$script")"
         echo "Linked: $(basename "$script")"
     done
-    echo "Done. Make sure ~/.local/bin is in your PATH."
+    echo "Done. Make sure ~/.local/bin/myscripts is in your PATH."
 }
 
 _install_dotfiles(){
@@ -76,9 +76,10 @@ _install_dotfiles(){
     GIT_USER=$(git config --get github.user 2>/dev/null)
     [ -z "$GIT_USER" ] && command -v gh &>/dev/null && GIT_USER=$(gh api user --jq .login 2>/dev/null)
     if [ -z "$GIT_USER" ]; then
-        echo -n "GitHub username: "; read GIT_USER </dev/tty
+        echo -n "GitHub username [${USER}]: "; read GIT_USER </dev/tty
+        GIT_USER="${GIT_USER:-$USER}"
     fi
-    local REPO_URL="https://github.com/$GIT_USER/dotfiles"
+    local REPO_URL="git@github.com:$GIT_USER/dotfiles.git"
     if [ -d "$GIT_DIR" ]; then
         echo "Dotfiles repo already set up. Pulling latest changes..."
         git --git-dir="$GIT_DIR" --work-tree="$HOME" pull
@@ -88,7 +89,8 @@ _install_dotfiles(){
         git --git-dir="$GIT_DIR" --work-tree="$HOME" checkout
         git --git-dir="$GIT_DIR" --work-tree="$HOME" config status.showUntrackedFiles no
     fi
-    echo "Done. Use: git --git-dir=$GIT_DIR --work-tree=\$HOME <command>"
+    ~/.local/bin/dotfiles check
+    echo "Done. Use: dotfiles <command>"
 }
 
 _install_basic(){
