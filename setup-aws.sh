@@ -6,9 +6,6 @@ sudo apt upgrade
 
 mkdir ~/.config
 
-# zsh
-sudo apt install zsh zsh-syntax-highlighting zsh-autosuggestions
-
 # docker
 # Add Docker's official GPG key:
 sudo apt-get update
